@@ -5,7 +5,6 @@
 #include <utility>
 #include <vector>
 #include "common/container/concurrent_blocking_queue.h"
-#include "common/container/concurrent_queue.h"
 #include "common/dedicated_thread_task.h"
 #include "storage/record_buffer.h"
 #include "storage/write_ahead_log/log_record.h"
@@ -30,8 +29,8 @@ class LogSerializerTask : public common::DedicatedThreadTask {
                              common::ConcurrentBlockingQueue<BufferedLogWriter *> *empty_buffer_queue,
                              common::ConcurrentQueue<storage::SerializedLogs> *filled_buffer_queue,
                              std::condition_variable *disk_log_writer_thread_cv)
-      : run_task_(false),
-        serialization_interval_(serialization_interval),
+  : run_task_(false),
+  serialization_interval_(serialization_interval),
         buffer_pool_(buffer_pool),
         filled_buffer_(nullptr),
         empty_buffer_queue_(empty_buffer_queue),
@@ -106,6 +105,14 @@ class LogSerializerTask : public common::DedicatedThreadTask {
 
   // Condition variable to signal disk log consumer task thread that a new full buffer has been pushed to the queue
   std::condition_variable *disk_log_writer_thread_cv_;
+
+  // Flag used by the serializer thread to signal the log serializer task thread to check when to serialize logs
+  volatile bool do_serialize_;
+
+  // Synchronisation primitives to synchronise access to serialize buffers
+  std::mutex read_buffer_lock_;
+  // condition variable signaling when to serialize buffers
+  std::condition_variable log_serializer_thread_cv_;
 
   /**
    * Main serialization loop. Calls Process every interval. Processes all the accumulated log records and

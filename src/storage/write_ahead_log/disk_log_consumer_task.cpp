@@ -19,6 +19,7 @@ void DiskLogConsumerTask::Terminate() {
   disk_log_writer_thread_cv_.notify_one();
 }
 
+//
 void DiskLogConsumerTask::WriteBuffersToLogFile() {
   // Persist all the filled buffers to the disk
   SerializedLogs logs;
@@ -69,6 +70,7 @@ void DiskLogConsumerTask::DiskLogConsumerTaskLoop() {
     {
       common::ScopedTimer<std::chrono::microseconds> scoped_timer(&elapsed_us);
       // Flush all the buffers to the log file
+      // TODO(Lilia): new task here
       WriteBuffersToLogFile();
     }
     write_us += elapsed_us;

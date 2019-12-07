@@ -67,6 +67,7 @@ void LogManager::PersistAndStop() {
 void LogManager::AddBufferToFlushQueue(RecordBufferSegment *const buffer_segment) {
   TERRIER_ASSERT(run_log_manager_, "Must call Start on log manager before handing it buffers");
   log_serializer_task_->AddBufferToFlushQueue(buffer_segment);
+  log_serializer_task_->log_serializer_thread_cv_.notify_one();
 }
 
 }  // namespace terrier::storage

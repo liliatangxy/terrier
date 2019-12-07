@@ -4,6 +4,7 @@
 #include <utility>
 #include <vector>
 #include "common/scoped_timer.h"
+#include "common/task_registry.h"
 #include "common/thread_context.h"
 #include "metrics/metrics_store.h"
 #include "transaction/transaction_context.h"
@@ -11,12 +12,24 @@
 
 namespace terrier::storage {
 
+// short or long task depending on presence of new buffers
+// might want to structure as waking up upon condition var
 void LogSerializerTask::LogSerializerTaskLoop() {
+
+#if 0
   auto curr_sleep = serialization_interval_;
   // TODO(Gus): Make max back-off a settings manager setting
+
   const auto max_sleep =
       serialization_interval_ * (1u << 10u);  // We cap the back-off in case of long gaps with no transactions
+#endif
+  // might not need to be in a while since we only signal one thread at a time
   do {
+    std::unique_lock<std::mutex> lock(read_buffer_lock_);
+    do_serialize_ = true;
+    log_serializer_thread_cv_.wait(lock, [&] { return !do_serialize } );
+
+#if 0
     // Serializing is now on the "critical txn path" because txns wait to commit until their logs are serialized. Thus,
     // a sleep is not fast enough. We perform exponential back-off, doubling the sleep duration if we don't process any
     // buffers in our call to Process. Calls to Process will process as long as new buffers are available.
@@ -24,7 +37,9 @@ void LogSerializerTask::LogSerializerTaskLoop() {
     // If Process did not find any new buffers, we perform exponential back-off to reduce our rate of polling for new
     // buffers. We cap the maximum back-off, since in the case of large gaps of no txns, we don't want to unboundedly
     // sleep
+
     curr_sleep = std::min(Process() ? serialization_interval_ : curr_sleep * 2, max_sleep);
+#endif
   } while (run_task_);
   // To be extra sure we processed everything
   Process();
@@ -93,6 +108,7 @@ bool LogSerializerTask::Process() {
  * Used by the serializer thread to get a buffer to serialize data to
  * @return buffer to write to
  */
+ // should be fast, single time, arbitrary frequency
 BufferedLogWriter *LogSerializerTask::GetCurrentWriteBuffer() {
   if (filled_buffer_ == nullptr) {
     empty_buffer_queue_->Dequeue(&filled_buffer_);
@@ -103,6 +119,7 @@ BufferedLogWriter *LogSerializerTask::GetCurrentWriteBuffer() {
 /**
  * Hand over the current buffer and commit callbacks for commit records in that buffer to the log consumer task
  */
+ //
 void LogSerializerTask::HandFilledBufferToWriter() {
   // Hand over the filled buffer
   filled_buffer_queue_->Enqueue(std::make_pair(filled_buffer_, commits_in_buffer_));

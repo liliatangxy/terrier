@@ -11,6 +11,8 @@
 #include "common/managed_pointer.h"
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
+#include "common/task_registry.h"
+#include "di/di_help.h"
 #include "settings/settings_manager.h"
 #include "storage/record_buffer.h"
 #include "storage/write_ahead_log/disk_log_consumer_task.h"
@@ -18,6 +20,8 @@
 #include "storage/write_ahead_log/log_record.h"
 #include "storage/write_ahead_log/log_serializer_task.h"
 #include "transaction/transaction_defs.h"
+#include "tbb/task.h"
+#include "tbb/task_arena.h"
 
 namespace terrier::storage {
 
@@ -56,7 +60,8 @@ class LogManager : public common::DedicatedThreadOwner {
   LogManager(std::string log_file_path, uint64_t num_buffers, std::chrono::microseconds serialization_interval,
              std::chrono::milliseconds persist_interval, uint64_t persist_threshold,
              RecordBufferSegmentPool *buffer_pool,
-             common::ManagedPointer<terrier::common::DedicatedThreadRegistry> thread_registry)
+             common::ManagedPointer<terrier::common::DedicatedThreadRegistry> thread_registry,
+             common::ManagedPointer<terrier::common::TaskRegistry> task_registry)
       : DedicatedThreadOwner(thread_registry),
         run_log_manager_(false),
         log_file_path_(std::move(log_file_path)),
@@ -158,6 +163,7 @@ class LogManager : public common::DedicatedThreadOwner {
       common::ManagedPointer<DiskLogConsumerTask>(nullptr);
   // Interval used by disk consumer task
   const std::chrono::milliseconds persist_interval_;
+
   // Threshold used by disk consumer task
   uint64_t persist_threshold_;
 

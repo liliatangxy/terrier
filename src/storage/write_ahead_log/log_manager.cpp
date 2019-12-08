@@ -19,7 +19,7 @@ void LogManager::Start() {
   // Register DiskLogConsumerTask
   disk_log_writer_task_ = thread_registry_->RegisterDedicatedThread<DiskLogConsumerTask>(
       this /* requester */, persist_interval_, persist_threshold_, &buffers_, &empty_buffer_queue_,
-      &filled_buffer_queue_);
+      &filled_buffer_queue_, &task_registry_);
 
   // Register LogSerializerTask
   log_serializer_task_ = thread_registry_->RegisterDedicatedThread<LogSerializerTask>(

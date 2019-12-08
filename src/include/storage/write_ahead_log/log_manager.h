@@ -68,7 +68,9 @@ class LogManager : public common::DedicatedThreadOwner {
         buffer_pool_(buffer_pool),
         serialization_interval_(serialization_interval),
         persist_interval_(persist_interval),
-        persist_threshold_(persist_threshold) {}
+        persist_threshold_(persist_threshold) {
+            task_registry_ = task_registry;
+        }
 
   /**
    * Starts log manager. Does the following in order:
@@ -165,6 +167,8 @@ class LogManager : public common::DedicatedThreadOwner {
 
   // Threshold used by disk consumer task
   uint64_t persist_threshold_;
+
+  common::ManagedPointer<terrier::common::TaskRegistry> task_registry_;
 
   /**
    * If the central registry wants to removes our thread used for the disk log consumer task, we only allow removal if

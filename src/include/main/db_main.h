@@ -37,6 +37,7 @@ class WriteAheadLoggingTests;
 
 namespace common {
 class DedicatedThreadRegistry;
+class TaskRegistry;
 }
 
 /**
@@ -83,6 +84,7 @@ class DBMain {
     delete provider_;
     delete t_cop_;
     delete thread_registry_;
+    delete task_registry_;
   }
 
   /**
@@ -123,6 +125,7 @@ class DBMain {
   network::ProtocolInterpreter::Provider *provider_;
   metrics::MetricsManager *metrics_manager_;
   common::DedicatedThreadRegistry *thread_registry_;
+  common::TaskRegistry *task_registry_;
   std::unique_ptr<catalog::Catalog> catalog_;
   storage::BlockStore *block_store_;
 

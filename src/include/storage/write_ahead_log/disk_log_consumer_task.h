@@ -3,7 +3,9 @@
 #include <utility>
 #include <vector>
 #include "common/container/concurrent_blocking_queue.h"
+#include "common/container/concurrent_queue.h"
 #include "common/dedicated_thread_registry.h"
+#include "common/task_registry.h"
 #include "storage/storage_defs.h"
 #include "storage/write_ahead_log/log_io.h"
 
@@ -26,14 +28,16 @@ class DiskLogConsumerTask : public common::DedicatedThreadTask {
   explicit DiskLogConsumerTask(const std::chrono::milliseconds persist_interval, uint64_t persist_threshold,
                                std::vector<BufferedLogWriter> *buffers,
                                common::ConcurrentBlockingQueue<BufferedLogWriter *> *empty_buffer_queue,
-                               common::ConcurrentQueue<storage::SerializedLogs> *filled_buffer_queue)
+                               common::ConcurrentQueue<storage::SerializedLogs> *filled_buffer_queue,
+                               common::TaskRegistry *task_registry)
       : run_task_(false),
         persist_interval_(persist_interval),
         persist_threshold_(persist_threshold),
         current_data_written_(0),
         buffers_(buffers),
         empty_buffer_queue_(empty_buffer_queue),
-        filled_buffer_queue_(filled_buffer_queue) {}
+        filled_buffer_queue_(filled_buffer_queue),
+        task_registry_(task_registry) {}
 
   /**
    * Runs main disk log writer loop. Called by thread registry upon initialization of thread
@@ -65,6 +69,8 @@ class DiskLogConsumerTask : public common::DedicatedThreadTask {
   common::ConcurrentBlockingQueue<BufferedLogWriter *> *empty_buffer_queue_;
   // The queue containing filled buffers. Task should dequeue filled buffers from this queue to flush
   common::ConcurrentQueue<SerializedLogs> *filled_buffer_queue_;
+
+  common::TaskRegistry *task_registry_;
 
   // Flag used by the serializer thread to signal the disk log consumer task thread to persist the data on disk
   volatile bool do_persist_;

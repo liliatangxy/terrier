@@ -3,6 +3,9 @@
 #include <vector>
 #include "tbb/task.h"
 #include "tbb/task_arena.h"
+#include "tbb/task_group.h"
+
+#include "metrics/metrics_manager.h"
 
 namespace terrier::common {
 
@@ -20,11 +23,11 @@ class TaskRegistry {
    * @param metrics_manager pointer to the metrics manager if metrics are enabled. Necessary for worker threads to
    * register themselves
    */
-  explicit TaskRegistry(common::ManagedPointer<metrics::MetricsManager> metrics_manager) {
+  explicit TaskRegistry(common::ManagedPointer<metrics::MetricsManager> metrics_manager)
+        : metrics_manager_(metrics_manager) {
     tbb::task_arena task_arena_;
     task_arena_.initialize();
-    task_arena_list_.push_back(task_arena_);
-    metrics_manager_(metrics_manager);
+    task_arena_list_.push_back(&task_arena_);
   }
 
   /**
@@ -39,8 +42,11 @@ class TaskRegistry {
     // for now just fixed priority and single task arena
     // with fine grained tasking and TBB task management
     // not much of a need to care about which arena owns what
-
-    return task_arena_list_[0].execute(f);
+    tbb::task_group *task_group_ = new tbb::task_group;
+    task_arena_list_[0]->execute([&, work{std::move(f)}] {
+      if (metrics_manager_ != DISABLED) metrics_manager_->RegisterThread();
+      task_group_->run(work);
+    });
   }
 
   // only useful if you want to change their priorities and cancel easily
@@ -57,28 +63,21 @@ class TaskRegistry {
     for (auto *func : fs) {
       task_arena_list_[0]->execute([&, work{std::move(func)}] {
         task_group_table_[task_arena_list_[0]].push_back(task_group_);
+        if (metrics_manager_ != DISABLED) metrics_manager_->RegisterThread();
         task_group_->run(work);
       });
     }
-  }
-
-  bool CancelTask(F&& f) {
-
-  }
-
-  bool CancelTasks() {
-
   }
 
   /**
    * Cleans up all task arenas after waiting for
    */
   void TearDown() {
-    common::SpinLatch::ScopedSpinLatch guard(table_latch_)
+    common::SpinLatch::ScopedSpinLatch guard(&table_latch_);
     for (auto *arena : task_arena_list_) {
       // is there a reason to not fully remove the task_arena
       //entry->terminate();
-      for (auto *gp : task_group_table_) {
+      for (auto *gp : task_group_table_[arena]) {
         gp->wait();
       }
       arena->~task_arena();
@@ -96,6 +95,8 @@ class TaskRegistry {
 
   // all active task_groups for a task_arena
   std::unordered_map<tbb::task_arena *, std::vector<tbb::task_group *>> task_group_table_;
+
+  const common::ManagedPointer<metrics::MetricsManager> metrics_manager_;
 };
 
 

@@ -71,7 +71,8 @@ void DiskLogConsumerTask::DiskLogConsumerTaskLoop() {
       common::ScopedTimer<std::chrono::microseconds> scoped_timer(&elapsed_us);
       // Flush all the buffers to the log file
       // TODO(Lilia): new task here
-      WriteBuffersToLogFile();
+
+      task_registry_->AddTask([&]() { WriteBuffersToLogFile(); });
     }
     write_us += elapsed_us;
 

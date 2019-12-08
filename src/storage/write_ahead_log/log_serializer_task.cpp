@@ -27,7 +27,7 @@ void LogSerializerTask::LogSerializerTaskLoop() {
   do {
     std::unique_lock<std::mutex> lock(read_buffer_lock_);
     do_serialize_ = true;
-    log_serializer_thread_cv_.wait(lock, [&] { return !do_serialize } );
+    log_serializer_thread_cv_.wait(lock, [&] { return !do_serialize_; } );
 
 #if 0
     // Serializing is now on the "critical txn path" because txns wait to commit until their logs are serialized. Thus,

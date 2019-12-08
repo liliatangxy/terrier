@@ -27,6 +27,8 @@ DBMain::DBMain(std::unordered_map<settings::Param, settings::ParamInfo> &&param_
   settings_manager_ = new settings::SettingsManager(this);
   metrics_manager_ = new metrics::MetricsManager;
   thread_registry_ = new common::DedicatedThreadRegistry(common::ManagedPointer(metrics_manager_));
+  task_registry_ = new common::TaskRegistry(common::ManagedPointer(metrics_manager_));
+
 
   // Create LogManager
   log_manager_ = new storage::LogManager(
@@ -35,7 +37,8 @@ DBMain::DBMain(std::unordered_map<settings::Param, settings::ParamInfo> &&param_
       std::chrono::milliseconds{settings_manager_->GetInt(settings::Param::log_serialization_interval)},
       std::chrono::milliseconds{settings_manager_->GetInt(settings::Param::log_persist_interval)},
       static_cast<uint64_t>(settings_manager_->GetInt64(settings::Param::log_persist_threshold)), buffer_segment_pool_,
-      common::ManagedPointer(thread_registry_));
+      common::ManagedPointer(thread_registry_),
+      common::ManagedPointer(task_registry_));
   log_manager_->Start();
 
   timestamp_manager_ = new transaction::TimestampManager;

@@ -12,7 +12,6 @@
 #include "common/spin_latch.h"
 #include "common/strong_typedef.h"
 #include "common/task_registry.h"
-#include "di/di_help.h"
 #include "settings/settings_manager.h"
 #include "storage/record_buffer.h"
 #include "storage/write_ahead_log/disk_log_consumer_task.h"
